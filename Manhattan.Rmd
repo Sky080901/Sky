@@ -1,0 +1,144 @@
+---
+title: "manhattan"
+output: html_document
+date: "2025-05-04"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+# install.packages("tidyverse")
+# install.packages("qqman")
+# install.packages("data.table")
+# install.packages("readr")
+# install.packages("R.utils")
+
+library(tidyverse)
+library(qqman)
+library(data.table)
+library(readr)
+library(R.utils)
+library(patchwork)
+```
+
+```{r Bp}
+data_bp <- fread("/Users/sky/Desktop/Pre_Project/Week_1/BipEx_gene_results.tsv.bgz")
+names(data_bp)      
+count(data_bp, group)
+data_bp <- filter(data_bp, group == "Bipolar Disorder (including Schizoaffective)")
+gene.cor <- read_csv("/Users/sky/Desktop/Pre_Project/Week_1/gnomad.v2.1.1.lof_metrics.by_gene.csv")
+gene.cor <- gene.cor %>%
+  mutate(chromosome = ifelse(chromosome == "X", 23, ifelse(chromosome == "Y", 24, chromosome)))
+
+dt <- left_join(data_bp, gene.cor, by = "gene_id") %>%
+  mutate(CHR = as.numeric(chromosome),
+         BP = start_position)%>%
+  filter(!is.na(CHR), !is.na(ptv_fisher_gnom_non_psych_pval))
+
+names(dt)
+min(dt$ptv_fisher_gnom_non_psych_pval,na.rm = TRUE)
+dt <- dt %>%
+  rename(p_value = ptv_fisher_gnom_non_psych_pval)
+
+plot.bp=manhattan(dt, chr = "CHR", bp = "BP", p = "p_value", snp = "gene",
+          main = "Bipolar Disorder",
+          genomewideline = -log10(2.5e-6), annotatePval = -log10(2.5e-6), suggestiveline = -log10(1e-4), ylab="-log10(p value)")
+
+dt %>% 
+  arrange(p_value) %>% 
+  select(gene) %>% 
+  slice_head(n=100) %>% 
+  write_delim("bp.top100.genes", col_names = F)
+```
+
+```{r Scz}
+data_scz <- fread("/Users/sky/Desktop/Pre_Project/Week_1/SCHEMA_gene_results.tsv.bgz")
+count(data_scz, group)
+
+dt_scz <- left_join(data_scz, gene.cor, by = "gene_id") %>%
+  mutate(CHR = as.numeric(chromosome),
+         BP = start_position)%>%
+  rename(P_meta="P meta") %>% 
+  filter(!is.na(CHR), !is.na(P_meta))
+
+names(dt_scz)
+min(dt_scz$P_meta,na.rm = TRUE)
+dt_scz <- dt_scz %>%
+  rename(p_value = P_meta)
+
+plot.scz=manhattan(dt_scz, chr = "CHR", bp = "BP", p = "p_value", snp = "gene",
+          main = "Schizophrenia",
+          genomewideline = -log10(2.5e-6), annotatePval = -log10(2.5e-6), suggestiveline = -log10(1e-4), ylab="-log10(p value)")
+
+dt_scz %>% 
+  arrange(p_value) %>% 
+  filter(p_value<=1e-4) %>% 
+  select(gene) %>% 
+  write_delim("scz.pval.1e-4.genes", col_names = F)
+
+dt_scz %>% 
+  arrange(p_value) %>% 
+  select(gene) %>% 
+  slice_head(n=100) %>% 
+  write_delim("scz.top100.genes", col_names = F)
+
+```
+
+```{r ASD}
+data_asd <- fread("/Users/sky/Desktop/Pre_Project/Week_1/ASC_gene_results.tsv.bgz")
+count(data_asd, group)
+
+dt_asd <- left_join(data_asd, gene.cor, by = "gene_id") %>%
+  mutate(CHR = as.numeric(chromosome),
+         BP = start_position)%>%
+  filter(!is.na(CHR), !is.na(qval))
+
+names(dt_asd)
+min(dt_asd$qval,na.rm = TRUE)
+
+dt_asd <- dt_asd %>%
+  mutate(qval=ifelse(qval==0,1e-18,qval))
+
+plot.asd=manhattan(dt_asd, chr = "CHR", bp = "BP", p = "qval", snp = "gene",
+          main = "Autism Spectrum Disorder",
+          genomewideline = -log10(0.05), annotatePval = -log10(0.05), suggestiveline = -log10(0.1), ylab="-log10(q value)")
+
+
+dt_asd %>% 
+  filter(qval<=0.05) %>% 
+  select(gene) %>% 
+  write_delim("asd.qval.0.05.genes", col_names = F)
+```
+
+```{r}
+data_epi <- fread("/Users/sky/Desktop/Pre_Project/Week_1/Epi25_gene_results.tsv.bgz")
+count(data_epi, group)
+data_epi <- filter(data_epi, group == "EPI")
+
+dt_epi <- left_join(data_epi, gene.cor, by = "gene_id") %>%
+  mutate(CHR = as.numeric(chromosome),
+         BP = start_position)%>%
+  filter(!is.na(CHR), !is.na(ptv_pval))
+
+names(dt_epi)
+min(dt_epi$ptv_pval,na.rm = TRUE)
+dt_epi <- dt_epi %>%
+  rename(p_value = ptv_pval)
+
+plot.epi=manhattan(dt_epi, chr = "CHR", bp = "BP", p = "p_value", snp = "gene",
+          main = "Epilepsy",
+          genomewideline = -log10(2.5e-6), annotatePval = -log10(2.5e-6), suggestiveline = -log10(1e-4), ylab="-log10(p value)")
+
+
+dt_epi %>% 
+  arrange(p_value) %>% 
+  slice_head(n=100) %>%
+  select(gene) %>% 
+  write_delim("epi.top100.genes", col_names = F)
+
+??manhattan
+?plot
+BiocManager::install("ggmanh")
+
+```
+

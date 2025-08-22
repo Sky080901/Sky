@@ -1,0 +1,187 @@
+---
+title: "Genetic Correlation"
+output: html_document
+date: "2025-01-01"
+editor_options: 
+  chunk_output_type: console
+---
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("influential")
+library(influential)
+#install.packages("bigreadr")
+library(bigreadr)
+library(bhr)
+```
+#Bp & Scz Genetic Correlation 
+```{r}
+bp_ptv <- readRDS("bp_sumstats_ptv.rds")
+sz_ptv <- readRDS("sz_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+bp_scz_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = bp_ptv,
+              trait2_sumstats = sz_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+bp_scz_rg <- bp_scz_bivariate$rg$rg_mixed
+bp_scz_rg
+bp_scz_rg_se <- bp_scz_bivariate$rg$rg_mixed_se
+bp_scz_rg_se
+bp_scz_low_ci <- bp_scz_rg - 1.96*bp_scz_rg_se
+bp_scz_low_ci
+bp_scz_high_ci <- bp_scz_rg + 1.96*bp_scz_rg_se
+bp_scz_high_ci
+```
+#Bp and Autism Genetic Correlation
+```{r}
+bp_ptv <- readRDS("bp_sumstats_ptv.rds")
+ac_ptv <- readRDS("ac_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+bp_ac_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = bp_ptv,
+              trait2_sumstats = ac_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+bp_ac_rg <- bp_ac_bivariate$rg$rg_mixed
+bp_ac_rg
+bp_ac_rg_se <- bp_ac_bivariate$rg$rg_mixed_se
+bp_ac_rg_se
+bp_ac_low_ci <- bp_ac_rg - 1.96*bp_ac_rg_se
+bp_ac_low_ci
+bp_ac_high_ci <- bp_ac_rg + 1.96*bp_ac_rg_se
+bp_ac_high_ci
+```
+#Scz and Autism Genetic Correlation
+```{r}
+sz_ptv <- readRDS("sz_sumstats_ptv.rds")
+ac_ptv <- readRDS("ac_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+scz_ac_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = sz_ptv,
+              trait2_sumstats = ac_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+scz_ac_rg <- scz_ac_bivariate$rg$rg_mixed
+scz_ac_rg
+scz_ac_rg_se <- scz_ac_bivariate$rg$rg_mixed_se
+scz_ac_rg_se
+scz_ac_low_ci <- scz_ac_rg - 1.96*scz_ac_rg_se
+scz_ac_low_ci
+scz_ac_high_ci <- scz_ac_rg + 1.96*scz_ac_rg_se
+scz_ac_high_ci
+```
+#DEE and GGE Genetic Correlation
+```{r}
+dee_ptv <- readRDS("dee_sumstats_ptv.rds")
+gge_ptv <- readRDS("gge_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+dee_gge_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = dee_ptv,
+              trait2_sumstats = gge_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+dee_gge_rg <- dee_gge_bivariate$rg$rg_mixed
+dee_gge_rg
+dee_gge_rg_se <- dee_gge_bivariate$rg$rg_mixed_se
+dee_gge_rg_se
+dee_gge_low_ci <- dee_gge_rg - 1.96*dee_gge_rg_se
+dee_gge_low_ci
+dee_gge_high_ci <- dee_gge_rg + 1.96*dee_gge_rg_se
+dee_gge_high_ci
+```
+#DEE and NAFE Genetic Correlation
+```{r}
+dee_ptv <- readRDS("dee_sumstats_ptv.rds")
+nafe_ptv <- readRDS("nafe_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+dee_nafe_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = dee_ptv,
+              trait2_sumstats = nafe_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+dee_nafe_rg <- dee_nafe_bivariate$rg$rg_mixed
+dee_nafe_rg
+dee_nafe_rg_se <- dee_nafe_bivariate$rg$rg_mixed_se
+dee_nafe_rg_se
+dee_nafe_low_ci <- dee_nafe_rg - 1.96*dee_nafe_rg_se
+dee_nafe_low_ci
+dee_nafe_high_ci <- dee_nafe_rg + 1.96*dee_nafe_rg_se
+dee_nafe_high_ci
+```
+#GGE and NAFE Genetic Correlation
+```{r}
+gge_ptv <- readRDS("gge_sumstats_ptv.rds")
+nafe_ptv <- readRDS("nafe_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+gge_nafe_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = gge_ptv,
+              trait2_sumstats = nafe_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+gge_nafe_rg <- gge_nafe_bivariate$rg$rg_mixed
+gge_nafe_rg
+gge_nafe_rg_se <- gge_nafe_bivariate$rg$rg_mixed_se
+gge_nafe_rg_se
+gge_nafe_low_ci <- gge_nafe_rg - 1.96*gge_nafe_rg_se
+gge_nafe_low_ci
+gge_nafe_high_ci <- gge_nafe_rg + 1.96*gge_nafe_rg_se
+gge_nafe_high_ci
+```
+#Bp and Epi Genetic Correlation
+```{r}
+bp_ptv <- readRDS("bp_sumstats_ptv.rds")
+epi_ptv <- readRDS("epi_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+bp_epi_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = bp_ptv,
+              trait2_sumstats = epi_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+bp_epi_rg <- bp_epi_bivariate$rg$rg_mixed
+bp_epi_rg
+bp_epi_rg_se <- bp_epi_bivariate$rg$rg_mixed_se
+bp_epi_rg_se
+bp_epi_low_ci <- bp_epi_rg - 1.96*bp_epi_rg_se
+bp_epi_low_ci
+bp_epi_high_ci <- bp_epi_rg + 1.96*bp_epi_rg_se
+bp_epi_high_ci
+```
+#Scz and Epi Genetic Correlation
+```{r}
+scz_ptv <- readRDS("sz_sumstats_ptv.rds")
+epi_ptv <- readRDS("epi_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+scz_epi_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = scz_ptv,
+              trait2_sumstats = epi_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+scz_epi_rg <- scz_epi_bivariate$rg$rg_mixed
+scz_epi_rg
+scz_epi_rg_se <- scz_epi_bivariate$rg$rg_mixed_se
+scz_epi_rg_se
+scz_epi_low_ci <- scz_epi_rg - 1.96*scz_epi_rg_se
+scz_epi_low_ci
+scz_epi_high_ci <- scz_epi_rg + 1.96*scz_epi_rg_se
+scz_epi_high_ci
+```
+#Ac and Epi Genetic Correlation
+```{r}
+ac_ptv <- readRDS("ac_sumstats_ptv.rds")
+epi_ptv <- readRDS("epi_sumstats_ptv.rds")
+baseline <- read.table("ms_baseline_oe5.txt")
+ac_epi_bivariate <- BHR(mode = "bivariate",
+              trait1_sumstats = ac_ptv,
+              trait2_sumstats = epi_ptv,
+              custom_variant_variances = FALSE,
+              annotations = list(baseline))
+ac_epi_rg <- ac_epi_bivariate$rg$rg_mixed
+ac_epi_rg
+ac_epi_rg_se <- ac_epi_bivariate$rg$rg_mixed_se
+ac_epi_rg_se
+ac_epi_low_ci <- ac_epi_rg - 1.96*ac_epi_rg_se
+ac_epi_low_ci
+ac_epi_high_ci <- ac_epi_rg + 1.96*ac_epi_rg_se
+ac_epi_high_ci
+```

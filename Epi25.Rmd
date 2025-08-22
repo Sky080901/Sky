@@ -1,0 +1,316 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("influential")
+library(influential)
+#install.packages("bigreadr")
+library(bigreadr)
+library(bhr)
+```
+
+
+```{r eval=FALSE}
+ep_variantlevel_epi25 <- bigreadr::fread2("Epi25_variant_results.tsv.bgz")
+baseline_model <- read.table("ms_baseline_oe5.txt")
+
+filter(ep_variantlevel_epi25, !is.na(p_value))
+count(ep_variantlevel_epi25, consequence)
+count(ep_variantlevel_epi25, group)
+
+ep_variantlevel_epi25 <- ep_variantlevel_epi25 %>% as_tibble()
+
+ep_variantlevel_epi25 = ep_variantlevel_epi25 %>% 
+  filter(in_analysis==T)
+
+ep_variantlevel_epi25 %>% 
+  filter(is.na(gene_id))
+
+ep_variantlevel_epi25 <- ep_variantlevel_epi25 %>% 
+  filter(locus %>% str_detect("X|Y", negate = T))
+
+ep_variantlevel_epi25 %>% 
+  count(group) %>% view
+
+ep_variantlevel_epi25$locus
+
+names(ep_variantlevel_epi25)
+
+dee_variantlevel_epi25 = ep_variantlevel_epi25 %>% 
+  filter(group == "DEE")
+
+dee_variantlevel_epi25
+
+
+wrangle_sumstats <- function(table, n_cases, n_controls, var_filter) {
+  
+  # Filter to variants of interest
+  table <- table[var_filter,] 
+  
+  # Compute sample prevalence
+  prevalence <- n_cases / (n_cases + n_controls)
+  
+  # Compute variant MAF in cases
+  table$AF_case <- table$ac_case / (2 * n_cases)
+  
+  # Compute variant MAF overall
+  table$AF <- (table$ac_case + table$ac_ctrl) / (2 * (n_cases + n_controls))
+  
+  # Check that there are no zero frequencies to avoid division by zero
+  if(any(table$AF == 0 | table$AF == 1)) {
+    warning("Some allele frequencies are 0 or 1, which may lead to division by zero.")
+  }
+  
+  # Calculate per-sd betas
+  table$beta <- (2 * (table$AF_case - table$AF) * prevalence) / 
+                sqrt(2 * table$AF * (1 - table$AF) * prevalence * (1 - prevalence))
+  
+  # Calculate variant variances
+  table$twopq <- 2 * table$AF * (1 - table$AF)
+  
+  # Convert betas from per-sd to per-allele betas
+  table$beta_perallele <- table$beta / sqrt(table$twopq)
+  
+  # Parse chromosome and position from locus
+  table$gene_position <- parse_number(sapply(strsplit(table$locus, split = ":"), function(x) x[[2]]))
+  table$chromosome <- parse_number(sapply(strsplit(table$locus, split = ":"), function(x) x[[1]]))
+  
+  # Aggregate into gene-level table
+  sumstats <- data.frame(
+    gene = table$gene_id,
+    AF = table$AF,
+    beta = table$beta_perallele,
+    gene_position = table$gene_position,
+    chromosome = table$chromosome,
+    N = n_cases + n_controls,
+    phenotype_key = "EP"
+  )
+  
+  # Remove outlier gene TTN (ENSG00000155657)
+  sumstats <- sumstats[sumstats$gene != "ENSG00000155657",]
+  
+  return(sumstats)
+}
+
+
+dee_variantlevel_epi25 %>% 
+  count(consequence)
+
+dee_variantlevel_epi25 %>% 
+  count(ac_case+ac_ctrl)
+
+dee_sumstats_ptv = wrangle_sumstats(dee_variantlevel_epi25,
+                                             1938,
+                                             33444,
+                                             dee_variantlevel_epi25$consequence=="pLoF")
+
+saveRDS(dee_sumstats_ptv, "epi_sumstats_ptv.rds")
+
+dee_sumstats_missenseMPC2 = wrangle_sumstats(dee_variantlevel_epi25,
+                                             1938,
+                                             33444,
+                             dee_variantlevel_epi25$consequence %in% c("damaging_missense"))
+
+# There is no synomynos data in epi25
+
+dee_ptv_bhr <- BHR(trait1_sumstats = dee_sumstats_ptv, 
+                       annotations = list(baseline_model), #baseline model including constraint annotations
+                       num_blocks = 100, #number of blocks for jackknife
+                       mode = "univariate") #run in univariate mode to compute burden h2
+
+dee_missenseMPC2_bhr <- BHR(dee_sumstats_missenseMPC2, 
+                       annotations = list(baseline_model),
+                       num_blocks = 100,
+                       mode = "univariate")
+
+#convert observed scale to liability scale h2
+
+#calculate sample prevalence
+dee_sample_prevalence = 1938/(1938 + 33444)
+
+#this population prevalence estimate is from Ferrari et al, 2016 Bipolar Disorders
+population_prevalence_dee = 0.001
+
+
+obs2lia_factor <- function(K, P){
+  X <- qnorm(K,lower.tail=FALSE)
+  z <- (1/sqrt(2*pi))*(exp(-(X**2)/2))
+  factor <- (K*(1-K)*K*(1-K))/(P*(1-P)*(z**2))
+  return(factor)
+}
+
+dee_scalingfactor = obs2lia_factor(population_prevalence_dee,dee_sample_prevalence)
+print(dee_scalingfactor)
+print(dee_ptv_bhr$mixed_model$heritabilities[1,5])
+print(dee_ptv_bhr$mixed_model$heritabilities[2,5])
+print(dee_missenseMPC2_bhr$mixed_model$heritabilities[1,5])
+print(dee_missenseMPC2_bhr$mixed_model$heritabilities[2,5])
+
+print(paste0("DEE PTV Burden Heritability: ",
+             round(dee_ptv_bhr$mixed_model$heritabilities[1,5] * dee_scalingfactor, 4),
+             " ",
+             "(",
+             round(dee_ptv_bhr$mixed_model$heritabilities[2,5] * dee_scalingfactor, 4),
+             ")"))
+
+print(paste0("DEE Missense MPC > 2 Burden Heritability: ",
+             round(dee_missenseMPC2_bhr$mixed_model$heritabilities[1,5] * dee_scalingfactor, 4),
+             " ",
+             "(",
+             round(dee_missenseMPC2_bhr$mixed_model$heritabilities[2,5] * dee_scalingfactor, 4),
+             ")"))
+```
+
+```{r}
+wrangle_sumstats <- function(table, n_cases, n_controls, var_filter) {
+  
+  # Filter to variants of interest
+  table <- table[var_filter,] 
+  
+  # Compute sample prevalence
+  prevalence <- n_cases / (n_cases + n_controls)
+  
+  # Compute variant MAF in cases
+  table$AF_case <- table$ac_case / (2 * n_cases)
+  
+  # Compute variant MAF overall
+  table$AF <- (table$ac_case + table$ac_ctrl) / (2 * (n_cases + n_controls))
+  
+  # Check that there are no zero frequencies to avoid division by zero
+  if(any(table$AF == 0 | table$AF == 1)) {
+    warning("Some allele frequencies are 0 or 1, which may lead to division by zero.")
+  }
+  
+  # Calculate per-sd betas
+  table$beta <- (2 * (table$AF_case - table$AF) * prevalence) / 
+                sqrt(2 * table$AF * (1 - table$AF) * prevalence * (1 - prevalence))
+  
+  # Calculate variant variances
+  table$twopq <- 2 * table$AF * (1 - table$AF)
+  
+  # Convert betas from per-sd to per-allele betas
+  table$beta_perallele <- table$beta / sqrt(table$twopq)
+  
+  # Parse chromosome and position from locus
+  table$gene_position <- parse_number(sapply(strsplit(table$locus, split = ":"), function(x) x[[2]]))
+  table$chromosome <- parse_number(sapply(strsplit(table$locus, split = ":"), function(x) x[[1]]))
+  
+  # Aggregate into gene-level table
+  sumstats <- data.frame(
+    gene = table$gene_id,
+    AF = table$AF,
+    beta = table$beta_perallele,
+    gene_position = table$gene_position,
+    chromosome = table$chromosome,
+    N = n_cases + n_controls,
+    phenotype_key = "EP"
+  )
+  
+  # Remove outlier gene TTN (ENSG00000155657)
+  sumstats <- sumstats[sumstats$gene != "ENSG00000155657",]
+  
+  return(sumstats)
+}
+```
+
+```{r}
+ep_variantlevel_epi25 <- bigreadr::fread2("Epi25_variant_results.tsv.bgz")
+baseline_model <- read.table("ms_baseline_oe5.txt")
+
+filter(ep_variantlevel_epi25, !is.na(p_value))
+count(ep_variantlevel_epi25, consequence)
+count(ep_variantlevel_epi25, group)
+
+ep_variantlevel_epi25 <- ep_variantlevel_epi25 %>% as_tibble()
+
+ep_variantlevel_epi25 = ep_variantlevel_epi25 %>% 
+  filter(in_analysis==T)
+
+ep_variantlevel_epi25 %>% 
+  filter(is.na(gene_id))
+
+ep_variantlevel_epi25 <- ep_variantlevel_epi25 %>% 
+  filter(locus %>% str_detect("X|Y", negate = T))
+
+ep_variantlevel_epi25 %>% 
+  count(group)
+
+ep_variantlevel_epi25$locus
+
+names(ep_variantlevel_epi25)
+
+
+run_BHR <- function(table, groupname, n_case, n_ctrl, population_prevalence){
+
+grouptable = table %>% 
+  filter(group == groupname)
+
+sumstats_ptv = wrangle_sumstats(grouptable,
+                                             n_case,
+                                             n_ctrl,
+                                             grouptable$consequence=="pLoF")
+
+sumstats_missenseMPC2 = wrangle_sumstats(grouptable,
+                                             n_case,
+                                             n_ctrl,
+                             grouptable$consequence %in% c("damaging_missense"))
+
+# There is no synomynos data in epi25
+
+ptv_bhr <- BHR(trait1_sumstats = sumstats_ptv, 
+                       annotations = list(baseline_model), #baseline model including constraint annotations
+                       num_blocks = 100, #number of blocks for jackknife
+                       mode = "univariate") #run in univariate mode to compute burden h2
+
+missenseMPC2_bhr <- BHR(sumstats_missenseMPC2, 
+                       annotations = list(baseline_model),
+                       num_blocks = 100,
+                       mode = "univariate")
+
+#convert observed scale to liability scale h2
+
+#calculate sample prevalence
+sample_prevalence = n_case/(n_case + n_ctrl) 
+
+obs2lia_factor <- function(K, P){
+  X <- qnorm(K,lower.tail=FALSE)
+  z <- (1/sqrt(2*pi))*(exp(-(X**2)/2))
+  factor <- (K*(1-K)*K*(1-K))/(P*(1-P)*(z**2))
+  return(factor)
+}
+
+scalingfactor = obs2lia_factor(population_prevalence, sample_prevalence)
+print(scalingfactor)
+
+print(paste0(groupname, " PTV Burden Heritability: ",
+             round(ptv_bhr$mixed_model$heritabilities[1,5] * scalingfactor, 4),
+             " ",
+             "(",
+             round(ptv_bhr$mixed_model$heritabilities[2,5] * scalingfactor, 4),
+             ")"))
+
+print(paste0(groupname, " Missense MPC > 2 Burden Heritability: ",
+             round(missenseMPC2_bhr$mixed_model$heritabilities[1,5] * scalingfactor, 4),
+             " ",
+             "(",
+             round(missenseMPC2_bhr$mixed_model$heritabilities[2,5] * scalingfactor, 4),
+             ")"))
+print(scalingfactor)
+print(ptv_bhr$mixed_model$heritabilities[1,5])
+print(ptv_bhr$mixed_model$heritabilities[2,5])
+print(missenseMPC2_bhr$mixed_model$heritabilities[1,5])
+print(missenseMPC2_bhr$mixed_model$heritabilities[2,5])
+}
+```
+
+```{r}
+DEE_result <- run_BHR(ep_variantlevel_epi25, "DEE", 1938, 33444, 0.001)
+GGE_result <- run_BHR(ep_variantlevel_epi25, "GGE", 5499, 33444, 0.001)
+NAFE_result <- run_BHR(ep_variantlevel_epi25, "NAFE", 9219, 33444, 0.01)
+EPI_result <- run_BHR(ep_variantlevel_epi25, "EPI", 20979, 33444, 0.01)
+```
+

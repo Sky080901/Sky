@@ -1,0 +1,16 @@
+---
+title: "Downloads"
+output: html_document
+date: "2025-04-13"
+---
+```{r}
+export src=gs://ukbb-exome-public/300k/results
+export dest=~/rds/results/public/gwas/ukb_exomes
+mkdir -p ${dest}
+cd ${dest}
+# Gene burden results
+gsutil -m cp -r ${src}/results.mt .
+# Single variant association results
+gsutil -m cp -r ${src}/variant_results.mt .
+```
+

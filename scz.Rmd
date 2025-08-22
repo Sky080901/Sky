@@ -1,0 +1,173 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("influential")
+library(influential)
+#install.packages("bigreadr")
+library(bigreadr)
+library(bhr)
+```
+
+
+```{r}
+sz_variantlevel_schema <- bigreadr::fread2("SCHEMA_variant_results.tsv.bgz")
+baseline_model <- read.table("ms_baseline_oe5.txt")
+
+sz_variantlevel_schema <- sz_variantlevel_schema %>% as_tibble()
+
+sz_variantlevel_schema = sz_variantlevel_schema %>% 
+  filter(in_analysis==T)
+
+sz_variantlevel_schema %>% 
+  filter(is.na(gene_id))
+
+sz_variantlevel_schema <- sz_variantlevel_schema %>% 
+  filter(locus %>% str_detect("X|Y", negate = T))
+
+sz_variantlevel_schema %>% 
+  count(group) %>% view
+
+
+# task 1
+# combine EUR count into one total count for each locus.
+eur_groups <- sz_variantlevel_schema %>% 
+  count(group) %>% 
+  filter(group %>% str_detect("EUR")) %>% 
+  pull(group)
+
+names(sz_variantlevel_schema)
+
+eur_variantlevel_schema = sz_variantlevel_schema %>% 
+  filter(group %>% str_detect("EUR")) %>% 
+  group_by(locus, alleles, gene_id, consequence, mpc) %>% 
+  nest() %>% 
+  mutate(ac_case = map_dbl(data, ~sum(.x$ac_case, na.rm = T)),
+         ac_ctrl = map_dbl(data, ~sum(.x$ac_ctrl, na.rm = T))) %>% 
+  ungroup() %>% 
+  select(gene_id, consequence, ac_case,ac_ctrl,locus, mpc)
+
+
+eur_variantlevel_schema
+
+
+wrangle_sumstats <- function(table, n_cases, n_controls, var_filter) {
+  
+  # Filter to variants of interest
+  table <- table[var_filter,] 
+  
+  # Compute sample prevalence
+  prevalence <- n_cases / (n_cases + n_controls)
+  
+  # Compute variant MAF in cases
+  table$AF_case <- table$ac_case / (2 * n_cases)
+  
+  # Compute variant MAF overall
+  table$AF <- (table$ac_case + table$ac_ctrl) / (2 * (n_cases + n_controls))
+  
+  # Check that there are no zero frequencies to avoid division by zero
+  if(any(table$AF == 0 | table$AF == 1)) {
+    warning("Some allele frequencies are 0 or 1, which may lead to division by zero.")
+  }
+  
+  # Calculate per-sd betas
+  table$beta <- (2 * (table$AF_case - table$AF) * prevalence) / 
+                sqrt(2 * table$AF * (1 - table$AF) * prevalence * (1 - prevalence))
+  
+  # Calculate variant variances
+  table$twopq <- 2 * table$AF * (1 - table$AF)
+  
+  # Convert betas from per-sd to per-allele betas
+  table$beta_perallele <- table$beta / sqrt(table$twopq)
+  
+  # Parse chromosome and position from locus
+  table$gene_position <- parse_number(sapply(strsplit(table$locus, split = ":"), function(x) x[[2]]))
+  table$chromosome <- parse_number(sapply(strsplit(table$locus, split = ":"), function(x) x[[1]]))
+  
+  # Aggregate into gene-level table
+  sumstats <- data.frame(
+    gene = table$gene_id,
+    AF = table$AF,
+    beta = table$beta_perallele,
+    gene_position = table$gene_position,
+    chromosome = table$chromosome,
+    N = n_cases + n_controls,
+    phenotype_key = "SZ"
+  )
+  
+  # Remove outlier gene TTN (ENSG00000155657)
+  sumstats <- sumstats[sumstats$gene != "ENSG00000155657",]
+  
+  return(sumstats)
+}
+
+
+eur_variantlevel_schema %>% 
+  count(consequence)
+
+eur_variantlevel_schema %>% 
+  count(ac_case+ac_ctrl)
+
+sz_sumstats_ptv = wrangle_sumstats(eur_variantlevel_schema,
+                                             16151,
+                                             53822,
+                                             eur_variantlevel_schema$consequence %in% c("frameshift_variant","stop_gained", "splice_acceptor_variant", "splice_donor_variant", "start_lost"))
+saveRDS(sz_sumstats_ptv, "sz_sumstats_ptv.rds")
+sz_sumstats_missenseMPC2 = wrangle_sumstats(eur_variantlevel_schema,
+                                             16151,
+                                             53822,
+                             eur_variantlevel_schema$consequence %in% c("missense_variant_mpc_>=3", "missense_variant_mpc_2-3"))
+
+# There is no synomynos data in schema
+
+sz_ptv_bhr <- BHR(trait1_sumstats = sz_sumstats_ptv, 
+                       annotations = list(baseline_model), #baseline model including constraint annotations
+                       num_blocks = 100, #number of blocks for jackknife
+                       mode = "univariate") #run in univariate mode to compute burden h2
+
+sz_missenseMPC2_bhr <- BHR(sz_sumstats_missenseMPC2, 
+                       annotations = list(baseline_model),
+                       num_blocks = 100,
+                       mode = "univariate")
+
+#convert observed scale to liability scale h2
+
+#calculate sample prevalence
+sz_sample_prevalence = 16151/(16151 + 53822) 
+
+#this population prevalence estimate is from Ferrari et al, 2016 Bipolar Disorders
+population_prevalence_sz = 0.0032
+
+
+obs2lia_factor <- function(K, P){
+  X <- qnorm(K,lower.tail=FALSE)
+  z <- (1/sqrt(2*pi))*(exp(-(X**2)/2))
+  factor <- (K*(1-K)*K*(1-K))/(P*(1-P)*(z**2))
+  return(factor)
+}
+
+sz_scalingfactor = obs2lia_factor(population_prevalence_sz,sz_sample_prevalence)
+print(sz_scalingfactor)
+print(sz_ptv_bhr$mixed_model$heritabilities[1,5])
+print(sz_ptv_bhr$mixed_model$heritabilities[2,5])
+print(sz_missenseMPC2_bhr$mixed_model$heritabilities[1,5])
+print(sz_missenseMPC2_bhr$mixed_model$heritabilities[2,5])
+
+print(paste0("SZ PTV Burden Heritability: ",
+             round(sz_ptv_bhr$mixed_model$heritabilities[1,5] * sz_scalingfactor, 4),
+             " ",
+             "(",
+             round(sz_ptv_bhr$mixed_model$heritabilities[2,5] * sz_scalingfactor, 4),
+             ")"))
+
+print(paste0("SZ Missense MPC > 2 Burden Heritability: ",
+             round(sz_missenseMPC2_bhr$mixed_model$heritabilities[1,5] * sz_scalingfactor, 4),
+             " ",
+             "(",
+             round(sz_missenseMPC2_bhr$mixed_model$heritabilities[2,5] * sz_scalingfactor, 4),
+             ")"))
+```

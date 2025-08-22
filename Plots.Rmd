@@ -1,0 +1,259 @@
+---
+title: "Plots"
+output: html_document
+date: "2024-12-23"
+editor_options: 
+  chunk_output_type: console
+---
+```{r}
+library(ggplot2)
+
+data <- data.frame(
+  Phenotype = c("Bipolar disorder", "Bipolar disorder",
+                "Autism", "Autism",
+                "Schizophrenia", "Schizophrenia"),
+  Variant_Category = c("PTV", "Damaging_Missense", 
+                       "PTV", "Damaging_Missense", 
+                       "PTV", "Damaging_Missense"),
+  Heritability = c(0.01789473519, 0.002093037968, 0.01471387764, 0.005727289422, 0.01568250377, 0.003666413804),
+  Low_CI = c(0.01192195209, -0.000006357372991, -0.002377843623, -0.002487469914, 0.0121157617, 0.001784204794),
+  High_CI = c(0.0238675183, 0.004192433309, 0.0318055989, 0.01394204876, 0.01924924585, 0.005548622813)
+)
+data$Variant_Category <- factor(data$Variant_Category, levels = c("PTV", "Damaging_Missense", "Synonymous"))
+
+ggplot(data, aes(x = Variant_Category, y = Heritability, color = Phenotype)) +
+  geom_point(position = position_dodge(width = 0.5), size = 3) +
+  geom_errorbar(aes(ymin = Low_CI, ymax = High_CI),
+                position = position_dodge(width = 0.5), width = 0.2) +
+  labs(x = NULL,
+       y = "Heritability in Liability Scale (95% CI)") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+```{r}
+library(ggplot2)
+
+data <- data.frame(
+  Phenotype = c("EPI", "EPI",
+                "DEE", "DEE",
+                "GGE", "GGE",
+                "NAFE", "NAFE"),
+  Variant_Category = c("PTV", "Damaging_Missense",
+                       "PTV", "Damaging_Missense",
+                       "PTV", "Damaging_Missense",
+                       "PTV", "Damaging_Missense"),
+  Heritability = c(0.01698437935, 0.003063445679, 0.1399671312, 0.04432188235, 0.02272628276, 0.004780004016, 0.02488551139, 0.002746533059),
+  Low_CI = c(0.01310331484, 0.001380599735, 0.1155134599, 0.03282812044, 0.01692191412, 0.001688833276, 0.01806400106, -0.0009964324601),
+  High_CI = c(0.02086544385, 0.004746291623, 0.1644208025, 0.05581564426, 0.0285306514, 0.007871174755, 0.03170702173, 0.006489498577)
+)
+
+data$Variant_Category <- factor(data$Variant_Category, levels = c("PTV", "Damaging_Missense"))
+data$Phenotype <- factor(data$Phenotype, levels = c("EPI", "DEE", "GGE", "NAFE"))
+
+ggplot(data, aes(x = Variant_Category, y = Heritability, color = Phenotype)) +
+  geom_point(position = position_dodge(width = 0.5), size = 3) +
+  geom_errorbar(aes(ymin = Low_CI, ymax = High_CI),
+                position = position_dodge(width = 0.5), width = 0.2) +
+  labs(x = NULL,
+       y = "Heritability in Liability Scale (95% CI)") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+```{r}
+library(ggplot2)
+
+data <- data.frame(
+  Condition = c("BP-SCZ", "BP-ASD", "SCZ-ASD", "BP-EPI", "SCZ-EPI", "ASD-EPI"),
+  rg = c(0.4160738, 0.3957455, 0.4390818, 0.07459692, 0.2788149, 0.7023562),
+  Low_CI = c(-0.00865347, -0.6454825, -0.1247661, -0.2805742, 0.01084219, -0.02377273),
+  High_CI = c(0.840801, 1.436973, 1.00293, 0.429768, 0.5467877, 1.428485)
+)
+
+ggplot(data, aes(x = Condition, y = rg)) +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymin = Low_CI, ymax = High_CI), width = 0.2, size = 1) + 
+  labs(x = NULL,
+       y = "Genetic Correlation (95%CI)") +
+  theme_minimal() +
+  ylim(-1, 1.5) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+
+```
+
+```{r}
+library(ggplot2)
+
+data <- data.frame(
+  Condition = c("DEE-GGE", "DEE-NAFE", "GGE-NAFE"),
+  rg = c(0.2092795, 0.1956521, 0.1619812),
+  Low_CI = c(0.1205626, 0.08081047, 0.0184992),
+  High_CI = c(0.2979965, 0.3104937, 0.3054631)
+)
+
+ggplot(data, aes(x = Condition, y = rg)) +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymin = Low_CI, ymax = High_CI), width = 0.2, size = 1) + 
+  labs(x = NULL,
+       y = "Genetic Correlation (95% CI)") +
+  theme_minimal() +
+  ylim(-1, 1.5) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+
+```
+
+```{r}
+library(ggplot2)
+library(tidyr)
+
+data <- data.frame(
+  Disorder = c("BP", "SCZ", "ASD", "DEE", "GGE", "NAFE", "EPI"),
+  Cases = c(13933, 16151, 4811, 1938, 5499, 9219, 20979),
+  Controls = c(14422, 53822, 5214, 33444, 33444, 33444, 33444)
+)
+
+data$Disorder <- factor(data$Disorder, levels = c("BP", "SCZ", "ASD", "DEE", "GGE", "NAFE", "EPI"))
+
+data_long <- data %>%
+  pivot_longer(cols = c(Cases, Controls), names_to = "Group", values_to = "Count")
+
+ggplot(data_long, aes(x = Disorder, y = Count, fill = Group)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Disorder", y = "Sample Size") +
+  scale_fill_manual(values = c("Cases" = "red", "Controls" = "blue")) +
+  theme_minimal()
+
+```
+```{r}
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+
+rare_matrix <- matrix(c(
+  1,         0.4160738, 0.3957455, 0.07459692,
+  0.4160738, 1,         0.4390818, 0.2788149,
+  0.3957455, 0.4390818, 1,         0.7023562,
+  0.07459692, 0.2788149, 0.7023562, 1
+), nrow = 4, byrow = TRUE)
+
+traits <- c("Bp", "Scz", "ASD", "EPI")
+rownames(rare_matrix) <- traits
+colnames(rare_matrix) <- traits
+
+common_matrix <- rare_matrix
+common_matrix[lower.tri(common_matrix)] <- c(
+  0.158,
+  0.259,
+  0.674,
+ -0.121,  
+ -0.105,
+ -0.108
+)
+
+pval_matrix <- matrix(NA, 4, 4)
+rownames(pval_matrix) <- colnames(pval_matrix) <- traits
+pval_matrix[lower.tri(pval_matrix)] <- c(
+  2.30e-03,
+  8.35e-10,
+  8.14e-214,
+  0.059,
+  0.006,
+  0.003
+)
+
+pval_matrix[upper.tri(pval_matrix)] <- t(pval_matrix)[upper.tri(pval_matrix)]
+
+corr_melt <- reshape2::melt(common_matrix, na.rm = TRUE)
+pval_melt <- reshape2::melt(pval_matrix, na.rm = FALSE)
+
+plot_data <- corr_melt %>%
+  rename(rg = value) %>%
+  left_join(pval_melt, by = c("Var1", "Var2")) %>%
+  rename(pval = value)
+
+plot_data <- plot_data %>%
+  mutate(star = case_when(
+    !is.na(pval) & pval <= 0.05 / 6 ~ "**",
+    !is.na(pval) & pval <= 0.05 ~ "*",
+    TRUE ~ ""
+  ),
+  label = paste0(round(rg, 2), star)
+  )
+
+ggplot(plot_data, aes(x = Var1, y = Var2, fill = rg)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label), size = 5, color = "black") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+                       midpoint = 0, limit = c(-1, 1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = "", y = "", fill = "Genetic correlation (rg)")
+
+```
+
+```{r}
+genetic_corr_matrix2 <- matrix(c(
+  1,        0.2092795, 0.1956521,
+  0.2092795, 1,        0.1619812,
+  0.1956521, 0.1619812, 1
+), nrow = 3, byrow = TRUE)
+
+rownames(genetic_corr_matrix2) <- colnames(genetic_corr_matrix2) <- c("DEE", "GGE", "NAFE")
+
+corr_melt2 <- melt(genetic_corr_matrix2)
+
+ggplot(corr_melt2, aes(x=Var1, y=Var2, fill=value)) +
+  geom_tile(color="white") +
+  geom_text(aes(label=round(value, 2)), size=5, color="black") +
+  scale_fill_gradient2(low="blue", high="red", mid="white", midpoint=0, limit=c(-1,1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1)) +
+  labs(x="", y="", fill="Genetic correlation (rg)")
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+data <- tibble(
+  phenotype = c("Autism Spectrum Disorder", "Schizophrenia", "Bipolar Disorder", "Epilepsy"),
+  `Twin Studies` = c(0.78, 0.81, 0.75, 0.80),
+  GWAS = c(0.12, 0.24, 0.19, 0.18),
+  `Sequencing Studies` = c(0.015, 0.016, 0.018, 0.017)
+) %>%
+  arrange(-`Twin Studies`) %>%
+  mutate(across(c("Twin Studies", "GWAS", "Sequencing Studies"), ~ . * 100))
+
+data_long <- data %>%
+  pivot_longer(cols = c("Twin Studies", "GWAS", "Sequencing Studies"), 
+               names_to = "Source", values_to = "Heritability")
+
+data_long$phenotype <- factor(data_long$phenotype, levels = rev(data$phenotype))
+
+data_long$Source <- factor(data_long$Source, levels = c("Twin Studies", "GWAS", "Sequencing Studies"))
+
+ggplot(data_long, aes(x = phenotype, y = Heritability, fill = Source)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(Heritability), group = Source),
+            position = position_stack(vjust = 0.5),
+            color = "white", size = 4) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "Sequencing Studies" = "#c6dbef",
+    "GWAS" = "#6baed6",
+    "Twin Studies" = "#2171b5"
+  )) +
+  labs(x = NULL, y = "Heritability (%)") +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    axis.text = element_text(size = 12),
+    panel.grid.major.y = element_blank()
+  )
+
+```
+
+
+
