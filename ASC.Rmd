@@ -24,7 +24,7 @@ ac_variantlevel_asc <- ac_variantlevel_asc %>%
   filter(in_analysis == TRUE, !is.na(gene_id)) %>%
   filter(locus %>% str_detect("X|Y", negate = TRUE))
 
-# subset dbs group
+# subset dbs groups
 dbs_variantlevel_asc = ac_variantlevel_asc %>% 
   filter(group=="DBS") %>% 
   select(gene_id, consequence, ac_case, ac_ctrl, locus, mpc)
