@@ -31,7 +31,7 @@ variant_filter = bp_variantlevel_bipex$group == "Bipolar Disorder" & #Filter to 
   str_detect(bp_variantlevel_bipex$locus, "^chr\\d") #Subset to autosomal variants
 
   
-#Subset variants 
+#Subset variants
 bp_variantlevel_bipex <- bp_variantlevel_bipex[variant_filter,
                                                c("gene_id",
                                                  "consequence",
