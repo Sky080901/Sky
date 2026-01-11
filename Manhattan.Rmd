@@ -7,7 +7,7 @@ editor_options:
 ---
 
 ```{r}
-# install.packages("tidyverse")
+# install.packages("tidyverse") 
 # install.packages("qqman")
 # install.packages("data.table")
 # install.packages("readr")
