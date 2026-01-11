@@ -6,6 +6,7 @@ editor_options:
   chunk_output_type: console
 ---
 ```{r}
+# Read
 library(ggplot2)
 
 data <- data.frame(
