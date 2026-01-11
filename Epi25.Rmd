@@ -8,7 +8,7 @@ editor_options:
 library(tidyverse)
 #install.packages("influential")
 library(influential)
-#install.packages("bigreadr")
+#install.packages("bigreadr") 
 library(bigreadr)
 library(bhr)
 ```
